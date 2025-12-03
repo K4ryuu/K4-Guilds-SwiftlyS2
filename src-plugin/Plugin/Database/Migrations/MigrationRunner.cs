@@ -1,6 +1,5 @@
 using System.Data;
 using FluentMigrator.Runner;
-using FluentMigrator.Runner.Conventions;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.DependencyInjection;
 using MySqlConnector;
@@ -14,8 +13,6 @@ namespace K4_Guilds.Database.Migrations;
 /// </summary>
 public static class MigrationRunner
 {
-    private const string VersionTableName = "k4_guilds_version_info";
-
     /// <summary>
     /// Run all pending migrations
     /// </summary>
@@ -30,7 +27,6 @@ public static class MigrationRunner
                 rb.ScanIn(typeof(MigrationRunner).Assembly).For.Migrations();
             })
             .AddLogging(lb => lb.AddFluentMigratorConsole())
-            .AddSingleton<IConventionSet>(new DefaultConventionSet(null, VersionTableName))
             .BuildServiceProvider(false);
 
         using var scope = serviceProvider.CreateScope();
