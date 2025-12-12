@@ -162,13 +162,12 @@ jobs:
             echo "EOF"
           } >> $GITHUB_OUTPUT
 
-      - name: Create or Update GitHub Release
+      - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           VERSION="${{ steps.version.outputs.version }}"
           REPO_NAME="${{ github.event.repository.name }}"
-          TAG="v${VERSION}"
 
           # Auto-detect pre-release (contains -)
           PRERELEASE_FLAG=""
@@ -177,31 +176,25 @@ jobs:
             echo "Detected pre-release version"
           fi
 
-          # Check if release already exists
-          if gh release view "$TAG" &>/dev/null; then
-            echo "Release $TAG exists - updating..."
+          # Find next available tag/build number
+          BASE_TAG="v${VERSION}"
+          TAG="$BASE_TAG"
+          TITLE="${REPO_NAME} | ${BASE_TAG}"
+          BUILD_NUM=1
 
-            gh release edit "$TAG" \
-              --title "${REPO_NAME} | ${TAG}" \
-              --notes "${{ steps.changelog.outputs.body }}" \
-              $PRERELEASE_FLAG
+          while gh release view "$TAG" &>/dev/null; do
+            BUILD_NUM=$((BUILD_NUM + 1))
+            TAG="${BASE_TAG}-${BUILD_NUM}"
+            TITLE="${REPO_NAME} | ${BASE_TAG}#${BUILD_NUM}"
+            echo "Tag $BASE_TAG exists, trying: $TAG"
+          done
 
-            # Upload all zips (main + perks)
-            for ZIP in release-artifacts/*.zip; do
-              gh release upload "$TAG" "$ZIP" --clobber
-              echo "Uploaded: $(basename $ZIP)"
-            done
+          echo "Creating release: $TAG (Title: $TITLE)"
 
-            echo "Release $TAG updated successfully!"
-          else
-            echo "Creating new release $TAG..."
+          gh release create "$TAG" \
+            --title "$TITLE" \
+            --notes "${{ steps.changelog.outputs.body }}" \
+            $PRERELEASE_FLAG \
+            release-artifacts/*.zip
 
-            # Create release with all zips
-            gh release create "$TAG" \
-              --title "${REPO_NAME} | ${TAG}" \
-              --notes "${{ steps.changelog.outputs.body }}" \
-              $PRERELEASE_FLAG \
-              release-artifacts/*.zip
-
-            echo "Release $TAG created successfully!"
-          fi
+          echo "Release $TAG created successfully!"
