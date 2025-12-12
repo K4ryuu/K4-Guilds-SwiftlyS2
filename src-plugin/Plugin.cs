@@ -20,7 +20,7 @@ namespace K4_Guilds;
 
 [PluginMetadata(
 	Id = "k4.guilds",
-	Version = "1.0.0",
+	Version = "1.0.1",
 	Name = "K4 - Guilds",
 	Author = "K4ryuu",
 	Description = "Guild system with ranks, upgrades, and developer API"
@@ -29,9 +29,13 @@ public sealed partial class Plugin(ISwiftlyCore core) : BasePlugin(core)
 {
 	public static new ISwiftlyCore Core { get; private set; } = null!;
 
-	internal GuildConfig Guild { get; private set; } = null!;
-	internal UpgradesConfig Upgrades { get; private set; } = null!;
-	internal CommandsConfig Commands { get; private set; } = null!;
+	public static IOptionsMonitor<GuildConfig> GuildConfig { get; private set; } = null!;
+	public static IOptionsMonitor<UpgradesConfig> UpgradesConfig { get; private set; } = null!;
+	public static IOptionsMonitor<CommandsConfig> CommandsConfig { get; private set; } = null!;
+
+	internal GuildConfig Guild => GuildConfig.CurrentValue;
+	internal UpgradesConfig Upgrades => UpgradesConfig.CurrentValue;
+	internal CommandsConfig Commands => CommandsConfig.CurrentValue;
 
 	private DatabaseService _database = null!;
 	private GuildService _guildService = null!;
@@ -95,24 +99,27 @@ public sealed partial class Plugin(ISwiftlyCore core) : BasePlugin(core)
 
 	private void InitializeConfigs()
 	{
-		Guild = BuildConfigService<GuildConfig>("guild.json", "K4GuildsGuild").Value;
-		Upgrades = BuildConfigService<UpgradesConfig>("upgrades.json", "K4GuildsUpgrades").Value;
-		Commands = BuildConfigService<CommandsConfig>("commands.json", "K4GuildsCommands").Value;
+		GuildConfig = BuildConfigService<GuildConfig>("guild.json", "K4GuildsGuild");
+		UpgradesConfig = BuildConfigService<UpgradesConfig>("upgrades.json", "K4GuildsUpgrades");
+		CommandsConfig = BuildConfigService<CommandsConfig>("commands.json", "K4GuildsCommands");
 	}
 
-	private static IOptions<T> BuildConfigService<T>(string fileName, string sectionName) where T : class, new()
+	private static IOptionsMonitor<T> BuildConfigService<T>(string fileName, string sectionName) where T : class, new()
 	{
 		Core.Configuration
 			.InitializeJsonWithModel<T>(fileName, sectionName)
-			.Configure(cfg => cfg.AddJsonFile(Core.Configuration.GetConfigPath(fileName), optional: false, reloadOnChange: true));
+			.Configure(builder =>
+			{
+				builder.AddJsonFile(fileName, optional: false, reloadOnChange: true);
+			});
 
 		ServiceCollection services = new();
 		services.AddSwiftly(Core)
-			.AddOptionsWithValidateOnStart<T>()
-			.BindConfiguration(sectionName);
+			.AddOptions<T>()
+			.BindConfiguration(fileName);
 
 		var provider = services.BuildServiceProvider();
-		return provider.GetRequiredService<IOptions<T>>();
+		return provider.GetRequiredService<IOptionsMonitor<T>>();
 	}
 
 	private void InitializeDatabase()

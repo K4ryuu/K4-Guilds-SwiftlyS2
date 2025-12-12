@@ -62,3 +62,6 @@ obj/
 
 # Ignore any file or folder ending with `.local`
 **/*.local
+
+# Exported resources
+src-plugin/resources/exports/
