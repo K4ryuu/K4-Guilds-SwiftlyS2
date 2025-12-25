@@ -59,7 +59,11 @@
     <Copy SourceFiles="$(MSBuildThisFileDirectory)../src-shared/build/$(TargetFramework)/K4-GuildsApi.dll" DestinationFolder="$(MSBuildThisFileDirectory)resources/exports/" />
   </Target>
 
-  <Target Name="CreateZip" AfterTargets="Publish">
+  <Target Name="CopySharedApiToPublish" AfterTargets="Publish">
+    <Copy SourceFiles="$(MSBuildThisFileDirectory)../src-shared/build/$(TargetFramework)/K4-GuildsApi.dll" DestinationFolder="$(PublishDir)resources/exports/" />
+  </Target>
+
+  <Target Name="CreateZip" AfterTargets="CopySharedApiToPublish" DependsOnTargets="CopySharedApiToPublish">
     <ZipDirectory SourceDirectory="$(PublishDir)" DestinationFile="$(OutputPath)../$(AssemblyName).zip" Overwrite="true" />
   </Target>
 </Project>
