@@ -22,7 +22,6 @@ public class CreateGuildsTables : Migration
             Create.Index("ix_guilds_leader").OnTable("k4_guilds").OnColumn("leader_steam_id");
         }
 
-
         if (!Schema.Table("k4_guild_members").Exists())
         {
             // Guild members table
@@ -72,9 +71,16 @@ public class CreateGuildsTables : Migration
 
     public override void Down()
     {
-        Delete.Table("k4_guild_perks");
-        Delete.Table("k4_guild_upgrades");
-        Delete.Table("k4_guild_members");
-        Delete.Table("k4_guilds");
+        if (Schema.Table("k4_guilds").Exists())
+            Delete.Table("k4_guild_perks");
+
+        if (Schema.Table("k4_guild_upgrades").Exists())
+            Delete.Table("k4_guild_upgrades");
+
+        if (Schema.Table("k4_guild_members").Exists())
+            Delete.Table("k4_guild_members");
+
+        if (Schema.Table("k4_guilds").Exists())
+            Delete.Table("k4_guilds");
     }
 }
