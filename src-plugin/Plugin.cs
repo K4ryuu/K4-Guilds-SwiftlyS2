@@ -11,6 +11,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SwiftlyS2.Shared;
+using SwiftlyS2.Shared.Events;
 using SwiftlyS2.Shared.GameEventDefinitions;
 using SwiftlyS2.Shared.Misc;
 using SwiftlyS2.Shared.Players;
@@ -140,19 +141,18 @@ public sealed partial class Plugin(ISwiftlyCore core) : BasePlugin(core)
 
 	private void RegisterEvents()
 	{
-		Core.GameEvent.HookPost<EventPlayerConnectFull>(OnPlayerConnectFull);
-		Core.GameEvent.HookPost<EventPlayerDisconnect>(OnPlayerDisconnect);
+		Core.GameEvent.HookPost<EventPlayerActivate>(OnPlayerActivate);
+		Core.Event.OnClientDisconnected += OnClientDisconnected;
 	}
 
-	private HookResult OnPlayerConnectFull(EventPlayerConnectFull ev)
+	private HookResult OnPlayerActivate(EventPlayerActivate ev)
 	{
-		var player = ev.UserIdPlayer;
-		if (!player.IsValid) return HookResult.Continue;
+		var player = Core.PlayerManager.GetPlayer(ev.UserId);
 
-		Task.Run(async () =>
-		{
-			await UpdatePlayerScoreboardTag(player);
-		});
+		if (player == null || !player.IsValid || player.IsFakeClient)
+			return HookResult.Continue;
+
+		Task.Run(async () => await UpdatePlayerScoreboardTag(player));
 
 		return HookResult.Continue;
 	}
@@ -253,13 +253,14 @@ public sealed partial class Plugin(ISwiftlyCore core) : BasePlugin(core)
 		});
 	}
 
-	private HookResult OnPlayerDisconnect(EventPlayerDisconnect ev)
+	private void OnClientDisconnected(IOnClientDisconnectedEvent ev)
 	{
-		var player = ev.UserIdPlayer;
-		if (player.IsValid)
-			_guildService.InvalidatePlayerCache(player.SteamID);
+		var player = Core.PlayerManager.GetPlayer(ev.PlayerId);
 
-		return HookResult.Continue;
+		if (player == null || !player.IsValid || player.IsFakeClient)
+			return;
+
+		_guildService.InvalidatePlayerCache(player.SteamID);
 	}
 
 	internal void OnGuildCreated(Guild guild)
